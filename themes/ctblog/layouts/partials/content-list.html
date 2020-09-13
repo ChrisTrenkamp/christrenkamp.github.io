@@ -1,0 +1,7 @@
+<ul class="sub-pages">
+    {{ range .Pages }}
+        <li>
+            <a href="{{ .Permalink }}">{{ .Title }}</a>
+        </li>
+    {{ end }}
+</ul>

@@ -1,0 +1,16 @@
+{{ partial "header-start.html" . }}
+{{ partial "includes.html" . }}
+<link rel="stylesheet" href="/css/index.css">
+{{ partial "header-end.html" . }}
+{{ partial "body-start.html" . }}
+{{ range first 10 (where .Site.RegularPages "Section" "blog").ByDate.Reverse }}
+    <div class="section">
+        <h3><a href="{{ .Permalink }}">{{ .Title }}</a></h3>
+        <div class="section">
+            <div class="section">{{ dateFormat "Jan 2, 2006" .Date }}</div>
+            {{ substr .Content 0 500 | safeHTML }}...
+        </div>
+    </div>
+    <div class="divider"></div>
+{{ end }}
+{{ partial "body-end.html" . }}

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Gentoo VFIO for high performance Windows VM&#39;s</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/skeleton.css">
+    <link rel="stylesheet" href="/css/highlighting.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+</head>
+<header class="no-padding">
+  <div class="navbar-fixed">
+    <nav class="navfeature grey darken-4">
+      <div class="container nav-wrapper header-width">
+        <a href="/" class="brand-logo center">Coding Verbiage</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<body>
+  <div class="content-start">
+    <main>
+<h3>Gentoo VFIO for high performance Windows VM&#39;s</h3>
+<p>I&rsquo;ve always had a love-hate relationship with Linux.  As a developer, its CLI tools are exactly what I need, it offers so many desktop environments that can be as minimal or bloated as you want, and installing a library you need is one command away, but Windows has all the mainstream applications.  For so many years, I&rsquo;ve dual-booted between Windows for games and Linux for work.  It was good enough for what I wanted, but as I get older, my tolerance for inconvenient workarounds gets thinner.</p>
+<p>I&rsquo;ve tried running Windows fulltime while using Cygwin for applications, but it makes your environment messy.  You essentially have two user directories and will frequently use one or the other depending on whether you&rsquo;re calling it from DOS or Cygwin, or flat-out won&rsquo;t let you call it from Cygwin.  So you&rsquo;ll frequently have one Cygwin window open for regular work and a DOS window open for working around applications that don&rsquo;t like Cygwin (hi, Go).</p>
+<p>I also dabbled with WSL.  It seems to work nicely for the minimal amount of time I spent on it.  However, my immediate first thought was whether I could switch the distro to Gentoo.  I&rsquo;m sure someone, somewhere, figured out how to do it, but it wasn&rsquo;t obvious to me.  Also, <a href="https://www.phoronix.com/scan.php?page=article&amp;item=wsl-february-2018&amp;num=2">some benchmarks</a> shows WSL&rsquo;s I/O performance dealing with the disk is laughable.  So using Gentoo will be a no-go anyway.</p>
+<p>So, I decided to go the crazy route.  The route that&rsquo;s not for the faint-of-heart.  The route that alienates you at parties when you try to explain it to people.  VGA passthrough.  Specifically, using the Linux kernel&rsquo;s VFIO features to expose physical hardware to your VM&rsquo;s.</p>
+<p>This requires specific hardware, tons of research, and hours of tweaking and fine-tuning through trial and error.  That should be enough to scare anyone off, but apparently not Linux users.  This is a rough guide for setting up a VFIO machine.  I&rsquo;m writing it mainly as notes for myself in case I do a reinstall, but should be applicable for anyone.</p>
+<p>The first thing is picking out the hardware.  You should get the hard part of the way first and find a motherboard that is known to work.  Manufacturers are really spotty when it comes to supporting different features that&rsquo;s required to make this work.  For Intel, you need VT-d.  For AMD, IOMMU.  I would suggest (at the time of this writing), to stick with AMD Ryzen, since it has better performance for the price point.</p>
+<p>For the motherboard, I bought an <a href="https://www.newegg.com/Product/Product.aspx?Item=N82E16813157757">ASRock X370</a>.  Any Ryzen CPU should do, but I bought an <a href="https://www.newegg.com/Product/Product.aspx?Item=N82E16819113430">1800X</a>.  You&rsquo;ll want enough CPU&rsquo;s for the host, as well as the VM.  You&rsquo;ll also need two GPU&rsquo;s: one for the host and one for the VM.  Get two nVidia GPU&rsquo;s.  AMD&rsquo;s GPU&rsquo;s still suck on Linux and nVidia has the least amount of hassle when passing it through to the VM.  This setup also relies on two monitors and <a href="https://symless.com/synergy">Synergy</a>.</p>
+<p>Also, special consideration is needed for the audio.  It is a GIANT pain in the ass to set up if you want the VM&rsquo;s audio to be redirected to the host.  The first part is figuring out the right parameters to pass to the QEMU VM to get the audio working correctly.  The second part is trying to tweak and fine-tune the host and VM to get rid of the crackling and latency problems.  I wouldn&rsquo;t recommend this route.  Instead, pass through a GPU with HDMI audio to the VM and hook your speakers up to that.  If you want audio on both the host and the VM, get a hardware audio mixer or a second set of speakers.</p>
+<p>Now set up the host by installing your distribution of choice.  In Gentoo&rsquo;s case, make sure you read through their <a href="https://wiki.gentoo.org/wiki/Ryzen">wiki page</a> for Ryzen.  I&rsquo;ve seen random segfaults when compiling even when not setting up any Ryzen-specific GCC options, but haven&rsquo;t bothered to investigate since it hasn&rsquo;t occured since lowering the number of jobs to <code>-j3</code>.  At the time of this writiing, GCC 6 seems to work with what I&rsquo;ve thrown at it when setting <code>-march=znver1</code>.  I even set the kernel Processor family to <code>AMD Zen</code> and haven&rsquo;t seen any other odd behavior.</p>
+<p>Speaking of the kernel, as a side-note, I don&rsquo;t bother going through the Kernel Seeds manual and whatnot.  I use genkernel to generate an initial configuration.  After booting into it, I then reconfigure the kernel with <code>make localyesconfig</code> to remove whatever modules that aren&rsquo;t loaded.  Also, be sure to set up the kernel for <a href="https://wiki.gentoo.org/wiki/Network_bridge">bridging</a>, and <a href="https://wiki.installgentoo.com/index.php/PCI_passthrough#Step_0:_Compile_IOMMU_support_if_you_use_Gentoo">VFIO</a>.</p>
+<p>Also note that you&rsquo;ll need Xorg.  Wayland is not going to work with Synergy.  Another thing to consider is if you have a programmable keyboard and mouse.  If you do, it&rsquo;s not going to work with Linux in all liklyhood.  In that case, you&rsquo;ll need to pass through a USB hub to the VM, as well as the GPU.  If you plan on gaming in the VM, you&rsquo;ll want to pass through a USB hub anyway because USB redirection will cause latency issues anyway.</p>
+<p>So, to find the device you want to pass through, run <code>lspci -nn</code> to find the devices you want exposed to the VM.  The catch, however, is you have to pass through an entire IOMMU group to the VM, not just the one device.  Run <a href="https://wiki.archlinux.org/index.php/PCI_passthrough_via_OVMF#Ensuring_that_the_groups_are_valid">this script</a> to list all the available groups.  When passing through a USB hub, find a hub that has the minimal amount of devices in its IOMMU group.</p>
+<p>For example, on my system:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ lspci -nn
+...
+0f:00.0 VGA compatible controller <span style="color:#f92672">[</span>0300<span style="color:#f92672">]</span>: NVIDIA Corporation GP106 <span style="color:#f92672">[</span>GeForce GTX <span style="color:#ae81ff">1060</span> 6GB<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>10de:1c03<span style="color:#f92672">]</span> <span style="color:#f92672">(</span>rev a1<span style="color:#f92672">)</span>
+0f:00.1 Audio device <span style="color:#f92672">[</span>0403<span style="color:#f92672">]</span>: NVIDIA Corporation GP106 High Definition Audio Controller <span style="color:#f92672">[</span>10de:10f1<span style="color:#f92672">]</span> <span style="color:#f92672">(</span>rev a1<span style="color:#f92672">)</span>
+...
+11:00.0 Non-Essential Instrumentation <span style="color:#f92672">[</span>1300<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Device <span style="color:#f92672">[</span>1022:145a<span style="color:#f92672">]</span>
+11:00.2 Encryption controller <span style="color:#f92672">[</span>1080<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Family 17h <span style="color:#f92672">(</span>Models 00h-0fh<span style="color:#f92672">)</span> Platform Security Processor <span style="color:#f92672">[</span>1022:1456<span style="color:#f92672">]</span>
+11:00.3 USB controller <span style="color:#f92672">[</span>0c03<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Family 17h <span style="color:#f92672">(</span>Models 00h-0fh<span style="color:#f92672">)</span> USB 3.0 Host Controller <span style="color:#f92672">[</span>1022:145c<span style="color:#f92672">]</span>
+...
+
+$ shopt -s nullglob
+$ <span style="color:#66d9ef">for</span> d in /sys/kernel/iommu_groups/*/devices/*; <span style="color:#66d9ef">do</span> 
+    n<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>d#*/iommu_groups/*<span style="color:#e6db74">}</span>; n<span style="color:#f92672">=</span><span style="color:#e6db74">${</span>n%%/*<span style="color:#e6db74">}</span>
+    printf <span style="color:#e6db74">&#39;IOMMU Group %s &#39;</span> <span style="color:#e6db74">&#34;</span>$n<span style="color:#e6db74">&#34;</span>
+    lspci -nns <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>d##*/<span style="color:#e6db74">}</span><span style="color:#e6db74">&#34;</span>
+<span style="color:#66d9ef">done</span>;
+...
+IOMMU Group <span style="color:#ae81ff">13</span> 0f:00.0 VGA compatible controller <span style="color:#f92672">[</span>0300<span style="color:#f92672">]</span>: NVIDIA Corporation GP106 <span style="color:#f92672">[</span>GeForce GTX <span style="color:#ae81ff">1060</span> 6GB<span style="color:#f92672">]</span> <span style="color:#f92672">[</span>10de:1c03<span style="color:#f92672">]</span> <span style="color:#f92672">(</span>rev a1<span style="color:#f92672">)</span>
+IOMMU Group <span style="color:#ae81ff">13</span> 0f:00.1 Audio device <span style="color:#f92672">[</span>0403<span style="color:#f92672">]</span>: NVIDIA Corporation GP106 High Definition Audio Controller <span style="color:#f92672">[</span>10de:10f1<span style="color:#f92672">]</span> <span style="color:#f92672">(</span>rev a1<span style="color:#f92672">)</span>
+...
+IOMMU Group <span style="color:#ae81ff">7</span> 11:00.0 Non-Essential Instrumentation <span style="color:#f92672">[</span>1300<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Device <span style="color:#f92672">[</span>1022:145a<span style="color:#f92672">]</span>
+IOMMU Group <span style="color:#ae81ff">7</span> 11:00.2 Encryption controller <span style="color:#f92672">[</span>1080<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Family 17h <span style="color:#f92672">(</span>Models 00h-0fh<span style="color:#f92672">)</span> Platform Security Processor <span style="color:#f92672">[</span>1022:1456<span style="color:#f92672">]</span>
+IOMMU Group <span style="color:#ae81ff">7</span> 11:00.3 USB controller <span style="color:#f92672">[</span>0c03<span style="color:#f92672">]</span>: Advanced Micro Devices, Inc. <span style="color:#f92672">[</span>AMD<span style="color:#f92672">]</span> Family 17h <span style="color:#f92672">(</span>Models 00h-0fh<span style="color:#f92672">)</span> USB 3.0 Host Controller <span style="color:#f92672">[</span>1022:145c<span style="color:#f92672">]</span>
+...
+</code></pre></div><p>I want to pass through my my GTX 1060 and the USB hub on 11:00.*.  So I&rsquo;ll add the following to the kernel arguments:</p>
+<pre><code>iommu=1 amd_iommu=on ignore_msrs=1 pci-stub.ids=10de:1c03,10de:10f1,1022:145a,1022:1456,1022:145c
+</code></pre><p><code>ignore_msrs=1</code> is necessary for fixing a BSOD problem with Windows.</p>
+<p>Now install libvirtd with the OVMF firmware.  If you don&rsquo;t use OVMF, PCI passthrough will not work.  Also, <a href="https://docs.fedoraproject.org/quick-docs/en-US/creating-windows-virtual-machines-using-virtio-drivers.html#virtio-win-direct-downloads">download the ISO</a> containing the VFIO drivers for Windows.  When running the initial installation process, attach the ISO to the VM and install the disk VFIO drivers.</p>
+<p>Now, instead of going through the entire installation process with virt-manager, I&rsquo;ll post my configuration with comments.  It should be sane enough for most environments and can be tweaked to your needs.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-xml" data-lang="xml"><span style="color:#f92672">&lt;domain</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;kvm&#39;</span><span style="color:#f92672">&gt;</span>
+  <span style="color:#f92672">&lt;name&gt;</span>win10<span style="color:#f92672">&lt;/name&gt;</span>
+  <span style="color:#f92672">&lt;uuid&gt;</span>...<span style="color:#f92672">&lt;/uuid&gt;</span>
+  <span style="color:#f92672">&lt;memory</span> <span style="color:#a6e22e">unit=</span><span style="color:#e6db74">&#39;KiB&#39;</span><span style="color:#f92672">&gt;</span>8388608<span style="color:#f92672">&lt;/memory&gt;</span> <span style="color:#75715e">&lt;!-- Be sure to allocate at least 8G of RAM --&gt;</span>
+  <span style="color:#f92672">&lt;currentMemory</span> <span style="color:#a6e22e">unit=</span><span style="color:#e6db74">&#39;KiB&#39;</span><span style="color:#f92672">&gt;</span>8388608<span style="color:#f92672">&lt;/currentMemory&gt;</span>
+  <span style="color:#f92672">&lt;vcpu</span> <span style="color:#a6e22e">placement=</span><span style="color:#e6db74">&#39;static&#39;</span><span style="color:#f92672">&gt;</span>8<span style="color:#f92672">&lt;/vcpu&gt;</span> <span style="color:#75715e">&lt;!-- My CPU has 16 logical cores.  A sufficient amount will be needed for the host so it can run emerge without disrupting the VM.  Plus, 8 cores will probably be enough for a gaming VM --&gt;</span>
+  <span style="color:#f92672">&lt;iothreads&gt;</span>4<span style="color:#f92672">&lt;/iothreads&gt;</span> <span style="color:#75715e">&lt;!-- 4 iothreads seems to be a good number. --&gt;</span>
+  <span style="color:#f92672">&lt;cputune&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;0&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;0&#39;</span><span style="color:#f92672">/&gt;</span> <span style="color:#75715e">&lt;!-- This pins the VM&#39;s execution to a fixed set of physical CPU&#39;s.  This should give better throughput in the VM since the host won&#39;t be context switching the VM&#39;s execution around to different CPU&#39;s. --&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;1&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;2&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;2&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;3&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;3&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;4&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;4&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;5&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;5&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;6&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;6&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;vcpupin</span> <span style="color:#a6e22e">vcpu=</span><span style="color:#e6db74">&#39;7&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;7&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;iothreadpin</span> <span style="color:#a6e22e">iothread=</span><span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;0-1&#39;</span><span style="color:#f92672">/&gt;</span>  <span style="color:#75715e">&lt;!-- This pins I/O operations to the host CPU&#39;s, not the VM&#39;s CPU&#39;s.  This should give better throughput for CPU-intensive applications on the VM since it won&#39;t be spending its own CPU cycles on disk/network operations. --&gt;</span>
+    <span style="color:#f92672">&lt;iothreadpin</span> <span style="color:#a6e22e">iothread=</span><span style="color:#e6db74">&#39;2&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;2-3&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;iothreadpin</span> <span style="color:#a6e22e">iothread=</span><span style="color:#e6db74">&#39;3&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;4-5&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;iothreadpin</span> <span style="color:#a6e22e">iothread=</span><span style="color:#e6db74">&#39;4&#39;</span> <span style="color:#a6e22e">cpuset=</span><span style="color:#e6db74">&#39;6-7&#39;</span><span style="color:#f92672">/&gt;</span>
+  <span style="color:#f92672">&lt;/cputune&gt;</span>
+  <span style="color:#f92672">&lt;os&gt;</span>
+    <span style="color:#f92672">&lt;type</span> <span style="color:#a6e22e">arch=</span><span style="color:#e6db74">&#39;x86_64&#39;</span> <span style="color:#a6e22e">machine=</span><span style="color:#e6db74">&#39;pc-i440fx-2.12&#39;</span><span style="color:#f92672">&gt;</span>hvm<span style="color:#f92672">&lt;/type&gt;</span> <span style="color:#75715e">&lt;!-- Again, you need OVMF, or VGA passthrough will not work --&gt;</span>
+    <span style="color:#f92672">&lt;loader</span> <span style="color:#a6e22e">readonly=</span><span style="color:#e6db74">&#39;yes&#39;</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;pflash&#39;</span><span style="color:#f92672">&gt;</span>/usr/share/edk2-ovmf/OVMF_CODE.fd<span style="color:#f92672">&lt;/loader&gt;</span>
+    <span style="color:#f92672">&lt;nvram&gt;</span>/var/lib/libvirt/qemu/nvram/win10_VARS.fd<span style="color:#f92672">&lt;/nvram&gt;</span>
+  <span style="color:#f92672">&lt;/os&gt;</span>
+  <span style="color:#f92672">&lt;features&gt;</span>
+    <span style="color:#f92672">&lt;acpi/&gt;</span>
+    <span style="color:#f92672">&lt;apic/&gt;</span>
+    <span style="color:#f92672">&lt;hyperv&gt;</span>
+      <span style="color:#f92672">&lt;relaxed</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;vapic</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;spinlocks</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span> <span style="color:#a6e22e">retries=</span><span style="color:#e6db74">&#39;8191&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;synic</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;stimer</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">&gt;</span>
+        <span style="color:#f92672">&lt;direct</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;/stimer&gt;</span>
+      <span style="color:#f92672">&lt;frequencies</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;vendor_id</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span> <span style="color:#a6e22e">value=</span><span style="color:#e6db74">&#39;whatever&#39;</span><span style="color:#f92672">/&gt;</span> <span style="color:#75715e">&lt;!-- nVidia GPU&#39;s don&#39;t like KVM, so we&#39;ll hide the fact that we&#39;re running under KVM by giving it a different vendor ID... --&gt;</span>
+    <span style="color:#f92672">&lt;/hyperv&gt;</span>
+    <span style="color:#f92672">&lt;kvm&gt;</span>
+      <span style="color:#f92672">&lt;hidden</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;on&#39;</span><span style="color:#f92672">/&gt;</span> <span style="color:#75715e">&lt;!-- ... and hide the fact that we&#39;re running on KVM.  Thanks nVidia. --&gt;</span>
+    <span style="color:#f92672">&lt;/kvm&gt;</span>
+    <span style="color:#f92672">&lt;vmport</span> <span style="color:#a6e22e">state=</span><span style="color:#e6db74">&#39;off&#39;</span><span style="color:#f92672">/&gt;</span>
+  <span style="color:#f92672">&lt;/features&gt;</span>
+  <span style="color:#f92672">&lt;cpu</span> <span style="color:#a6e22e">mode=</span><span style="color:#e6db74">&#39;host-passthrough&#39;</span> <span style="color:#a6e22e">check=</span><span style="color:#e6db74">&#39;none&#39;</span><span style="color:#f92672">&gt;</span> <span style="color:#75715e">&lt;!-- host-passthrough exposes the CPU&#39;s features to the VM.  This will be especially necessary if you want to run more VM&#39;s inside the VM. --&gt;</span>
+    <span style="color:#f92672">&lt;topology</span> <span style="color:#a6e22e">sockets=</span><span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#a6e22e">dies=</span><span style="color:#e6db74">&#39;1&#39;</span> <span style="color:#a6e22e">cores=</span><span style="color:#e6db74">&#39;4&#39;</span> <span style="color:#a6e22e">threads=</span><span style="color:#e6db74">&#39;2&#39;</span><span style="color:#f92672">/&gt;</span> <span style="color:#75715e">&lt;!-- This needs to match your host topology.  If you have hyperthreading, divide the CPU&#39;s your exposing in half and use two threads. --&gt;</span>
+    <span style="color:#f92672">&lt;feature</span> <span style="color:#a6e22e">policy=</span><span style="color:#e6db74">&#39;require&#39;</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;topoext&#39;</span><span style="color:#f92672">/&gt;</span>
+  <span style="color:#f92672">&lt;/cpu&gt;</span>
+  <span style="color:#f92672">&lt;clock</span> <span style="color:#a6e22e">offset=</span><span style="color:#e6db74">&#39;localtime&#39;</span><span style="color:#f92672">&gt;</span> <span style="color:#75715e">&lt;!-- We don&#39;t want our VM&#39;s time to be set halfway across the world, now do we? --&gt;</span>
+    <span style="color:#f92672">&lt;timer</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;hpet&#39;</span> <span style="color:#a6e22e">present=</span><span style="color:#e6db74">&#39;yes&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;timer</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;hypervclock&#39;</span> <span style="color:#a6e22e">present=</span><span style="color:#e6db74">&#39;yes&#39;</span><span style="color:#f92672">/&gt;</span>
+  <span style="color:#f92672">&lt;/clock&gt;</span>
+  <span style="color:#f92672">&lt;on_poweroff&gt;</span>destroy<span style="color:#f92672">&lt;/on_poweroff&gt;</span> <span style="color:#75715e">&lt;!-- Don&#39;t suspend the VM.  It will cause problems with the GPU --&gt;</span>
+  <span style="color:#f92672">&lt;on_reboot&gt;</span>restart<span style="color:#f92672">&lt;/on_reboot&gt;</span>
+  <span style="color:#f92672">&lt;on_crash&gt;</span>destroy<span style="color:#f92672">&lt;/on_crash&gt;</span>
+  <span style="color:#f92672">&lt;pm&gt;</span>
+    <span style="color:#f92672">&lt;suspend-to-mem</span> <span style="color:#a6e22e">enabled=</span><span style="color:#e6db74">&#39;no&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;suspend-to-disk</span> <span style="color:#a6e22e">enabled=</span><span style="color:#e6db74">&#39;no&#39;</span><span style="color:#f92672">/&gt;</span>
+  <span style="color:#f92672">&lt;/pm&gt;</span>
+  <span style="color:#f92672">&lt;devices&gt;</span>
+    <span style="color:#f92672">&lt;emulator&gt;</span>/usr/bin/qemu-system-x86_64<span style="color:#f92672">&lt;/emulator&gt;</span>
+    <span style="color:#f92672">&lt;disk</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;block&#39;</span> <span style="color:#a6e22e">device=</span><span style="color:#e6db74">&#39;disk&#39;</span><span style="color:#f92672">&gt;</span> <span style="color:#75715e">&lt;!-- We want to use virtio for the disk.  Be sure to give the VM the VFIO ISO when first installing.  --&gt;</span>
+      <span style="color:#f92672">&lt;driver</span> <span style="color:#a6e22e">name=</span><span style="color:#e6db74">&#39;qemu&#39;</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;raw&#39;</span> <span style="color:#a6e22e">cache=</span><span style="color:#e6db74">&#39;none&#39;</span> <span style="color:#a6e22e">io=</span><span style="color:#e6db74">&#39;native&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;source</span> <span style="color:#a6e22e">dev=</span><span style="color:#e6db74">&#39;/path/to/device&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;target</span> <span style="color:#a6e22e">dev=</span><span style="color:#e6db74">&#39;vda&#39;</span> <span style="color:#a6e22e">bus=</span><span style="color:#e6db74">&#39;virtio&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;/disk&gt;</span>
+    <span style="color:#f92672">&lt;interface</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;bridge&#39;</span><span style="color:#f92672">&gt;</span> <span style="color:#75715e">&lt;!-- Again, we want to use virtio for the network.  After installing Windows, install the network VFIO drivers from the ISO.  --&gt;</span>
+      <span style="color:#f92672">&lt;mac</span> <span style="color:#a6e22e">address=</span><span style="color:#e6db74">&#39;FF:FF:FF:FF:FF:FF&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;source</span> <span style="color:#a6e22e">bridge=</span><span style="color:#e6db74">&#39;br0&#39;</span><span style="color:#f92672">/&gt;</span>
+      <span style="color:#f92672">&lt;model</span> <span style="color:#a6e22e">type=</span><span style="color:#e6db74">&#39;virtio&#39;</span><span style="color:#f92672">/&gt;</span>
+    <span style="color:#f92672">&lt;/interface&gt;</span>
+    <span style="color:#f92672">&lt;memballoon</span> <span style="color:#a6e22e">model=</span><span style="color:#e6db74">&#39;none&#39;</span><span style="color:#f92672">/&gt;</span> <span style="color:#75715e">&lt;!-- memballoon seems to hurt performance --&gt;</span>
+    <span style="color:#75715e">&lt;!-- The rest is PCI subsystem configurtions.  Be sure to use vfio for the driver for each section. e.g.
+</span><span style="color:#75715e">    &lt;hostdev mode=&#39;subsystem&#39; type=&#39;pci&#39; managed=&#39;yes&#39;&gt;
+</span><span style="color:#75715e">      &lt;driver name=&#39;vfio&#39;/&gt;
+</span><span style="color:#75715e">      &lt;source&gt;
+</span><span style="color:#75715e">        &lt;address domain=&#39;0x0000&#39; bus=&#39;0x11&#39; slot=&#39;0x00&#39; function=&#39;0x2&#39;/&gt;
+</span><span style="color:#75715e">      &lt;/source&gt;
+</span><span style="color:#75715e">      &lt;address type=&#39;pci&#39; domain=&#39;0x0000&#39; bus=&#39;0x00&#39; slot=&#39;0x09&#39; function=&#39;0x0&#39;/&gt;
+</span><span style="color:#75715e">    &lt;/hostdev&gt;
+</span><span style="color:#75715e">    --&gt;</span>
+  <span style="color:#f92672">&lt;/devices&gt;</span>
+<span style="color:#f92672">&lt;/domain&gt;</span>
+</code></pre></div><p>That&rsquo;s about it.  After installing the VM, you&rsquo;ll have to install Synergy on the host and client.  The easiest way to do this is to give your host and VM static IP addresses.  Have fun plugging the keyboard/mouse into different ports when setting this up.</p>
+<p>Some TODO&rsquo;s involve investigating isolcpu&rsquo;s and irqbalance, though my initial tests with them seemed to hurt performance.</p>
+<p>Here&rsquo;s some general notes that I&rsquo;ll keep appending to as time goes on.</p>
+<ul>
+<li>Configure libvirtd to shutdown your VM&rsquo;s when rebooting or shutting down the host.  It defaults to hibernate.</li>
+<li>Set the number of make jobs on the host to <code>-j3</code>.  Set it any higher and it will cause a noticable performance impact on the VM.</li>
+<li>For some reason, Synergy goes haywire if you move the mouse cursor out of the Windows VM when it has the picture dropdown on the lock screen.</li>
+<li>If you&rsquo;re using Gnome, <a href="https://extensions.gnome.org/extension/963/disable-barrier-support/">this extension</a> fixing the hot corner when using Synergy.</li>
+<li>Consider enabling <a href="http://lime-technology.com/wiki/index.php/UnRAID_6/VM_Guest_Support#Enable_MSI_for_Interrupts_to_Fix_HDMI_Audio_Support">MSI Interrupts</a>.  It can <a href="https://forums.guru3d.com/threads/windows-line-based-vs-message-signaled-based-interrupts.378044/">help with latency problems</a>.</li>
+</ul>
+
+</main>
+</div>
+</body>
+
+</html>

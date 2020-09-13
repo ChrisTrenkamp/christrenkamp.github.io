@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Thoughts on Hugo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/skeleton.css">
+    <link rel="stylesheet" href="/css/highlighting.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+</head>
+<header class="no-padding">
+  <div class="navbar-fixed">
+    <nav class="navfeature grey darken-4">
+      <div class="container nav-wrapper header-width">
+        <a href="/" class="brand-logo center">Coding Verbiage</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<body>
+  <div class="content-start">
+    <main>
+<h3>Thoughts on Hugo</h3>
+<p>This domain has been registered for quite a while, but I didn&rsquo;t bother to create a website, until now.  This is some thoughts on using Hugo.</p>
+<p>I&rsquo;m quite familiar with the Javascript ecosystem (Node.JS, React, Sass/SCSS, Typescript, etc.), but wanted something simple without sacrificing too much flexibility.  I picked Hugo as the static site generator since it&rsquo;s a single executable that you have to download, not a Node.JS module with 6,725 dependencies to go along with it.</p>
+<p>It&rsquo;s relatively nice to work with once you&rsquo;ve gone through the documentation, but that&rsquo;s the rub.  The documentation looks nice at a cursory glance (and don&rsquo;t get me wrong, the documentation is great and thorough), but you&rsquo;ll quickly fall into a brain-overload of terminology that&rsquo;s being thrown at you every which direction.</p>
+<p>If you stick with just making content and don&rsquo;t necessarily care about how the site looks, that&rsquo;s no problem.  Type in <code>hugo new blog/thoughts-of-the-day.md</code> and you&rsquo;ll be up and running in no time.  My problem, however, is I want to look under the hood and tweak everything from the theme&rsquo;s layout to the HTML libraries.</p>
+<p>Searching for <code>hugo theme tutorial</code> will bring up <a href="https://gohugo.io/themes/creating/">this page</a>, which lays out a couple high-level concepts and how to create a new theme.  So far that&rsquo;s good, but how do you actually start creating the theme?  At the bottom, you&rsquo;ll see a link called <code>Directory Structure</code>.  That must be a good starting point!</p>
+<p>So you go there and see some more high-level concepts about Hugo&rsquo;s directory structure&hellip; still nothing about themes.  Hm, what about this <a href="https://gohugo.io/templates/">layouts link</a>?  Okay, they&rsquo;re templates.  Let&rsquo;s look at the <a href="https://gohugo.io/templates/introduction/">introduction</a>.  Okay, it uses Go&rsquo;s html/template package.  If you&rsquo;re not familiar with Go, or it&rsquo;s templating system, you&rsquo;re going to be in for a world of hurt.  Thankfully, I&rsquo;m already familiar with it.</p>
+<p>The template introduction page lays out more than what you&rsquo;d want just so you can get started.  And going through all the links in the navigation bar aren&rsquo;t exactly helping you figure out how to get started, either.</p>
+<p>Eventually, I just downloaded a theme and studied the source to figure out how everything fits together.  The main problem with going through Hugo&rsquo;s documentation is there aren&rsquo;t any step-by step tutorials that start with the basic, core concepts (like list pages, single pages, index pages, etc), and slowly add on more concepts from there.</p>
+<p>That&rsquo;s my only criticism about Hugo&rsquo;s documentation.  Once you&rsquo;ve understood the core concepts, the documentation becomes much more useful.</p>
+<p>The only other problem I have with Hugo is using Go&rsquo;s templates.  They&rsquo;re fine for simple tasks, but once you want to do some basic logic, they become clunky and a real eye-sore, very fast.</p>
+
+</main>
+</div>
+</body>
+
+</html>

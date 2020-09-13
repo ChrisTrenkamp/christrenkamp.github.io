@@ -1,0 +1,13 @@
+baseURL = "https://christrenkamp.github.io/"
+languageCode = "en-us"
+title = "Coding Verbiage"
+theme = "ctblog"
+
+publishDir = "docs"
+
+[markup.goldmark.renderer]
+unsafe = true
+
+# hugo gen chromastyles --style=monokai > themes/ctblog/static/css/highlighting.css
+pygmentsCodeFences = true
+pygmentsUseClasses = true

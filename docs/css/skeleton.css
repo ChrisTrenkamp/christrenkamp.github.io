@@ -1,0 +1,41 @@
+.content-start {
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+@media screen and (max-width: 900px) {
+    .content-start {
+        margin-left: 20px;
+        margin-right: 20px;
+    }
+}
+
+#slide-out {
+    margin-top: -24px;
+}
+
+code {
+    color: red;
+}
+
+pre>code {
+    display: block;
+    white-space: pre-wrap;
+    background-color: #212121;
+    color: white;
+    padding: 8px;
+}
+
+main ul:not(.browser-default) {
+    padding-left: 40px!important;
+    list-style-type: initial!important;
+}
+
+main li:not(.browser-default) {
+    list-style-type: initial!important;
+}
+
+.header-width {
+    width: 100%!important;
+}

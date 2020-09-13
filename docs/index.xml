@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Coding Verbiage</title>
+    <link>https://christrenkamp.github.io/</link>
+    <description>Recent content on Coding Verbiage</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sat, 22 Sep 2018 18:30:23 -0400</lastBuildDate>
+    
+	<atom:link href="https://christrenkamp.github.io/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>Raspberry Pi: Running on an NFS root over Wifi</title>
+      <link>https://christrenkamp.github.io/blog/rpi-nfs-root-over-wifi/</link>
+      <pubDate>Sat, 22 Sep 2018 18:30:23 -0400</pubDate>
+      
+      <guid>https://christrenkamp.github.io/blog/rpi-nfs-root-over-wifi/</guid>
+      <description>It seems a lot of people work directly or compile software directly on their Raspberry Pi. I prefer to cross-compile on my desktop because it&amp;rsquo;s way faster. However, this also requires setting up a network share; transferring the SD card between the desktop and the RPI will get annoying very quickly. While we&amp;rsquo;re at it, we&amp;rsquo;d might as well use an NFS root so we can make sure the init process only starts what we need.</description>
+    </item>
+    
+    <item>
+      <title>Gentoo VFIO for high performance Windows VM&#39;s</title>
+      <link>https://christrenkamp.github.io/blog/gentoo-vfio-for-windows-vms/</link>
+      <pubDate>Sat, 21 Jul 2018 11:16:19 -0400</pubDate>
+      
+      <guid>https://christrenkamp.github.io/blog/gentoo-vfio-for-windows-vms/</guid>
+      <description>I&amp;rsquo;ve always had a love-hate relationship with Linux. As a developer, its CLI tools are exactly what I need, it offers so many desktop environments that can be as minimal or bloated as you want, and installing a library you need is one command away, but Windows has all the mainstream applications. For so many years, I&amp;rsquo;ve dual-booted between Windows for games and Linux for work. It was good enough for what I wanted, but as I get older, my tolerance for inconvenient workarounds gets thinner.</description>
+    </item>
+    
+    <item>
+      <title>Thoughts on Hugo</title>
+      <link>https://christrenkamp.github.io/blog/hugo-thoughts/</link>
+      <pubDate>Sat, 26 May 2018 20:24:56 -0400</pubDate>
+      
+      <guid>https://christrenkamp.github.io/blog/hugo-thoughts/</guid>
+      <description>This domain has been registered for quite a while, but I didn&amp;rsquo;t bother to create a website, until now. This is some thoughts on using Hugo.
+I&amp;rsquo;m quite familiar with the Javascript ecosystem (Node.JS, React, Sass/SCSS, Typescript, etc.), but wanted something simple without sacrificing too much flexibility. I picked Hugo as the static site generator since it&amp;rsquo;s a single executable that you have to download, not a Node.JS module with 6,725 dependencies to go along with it.</description>
+    </item>
+    
+  </channel>
+</rss>

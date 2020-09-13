@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Raspberry Pi: Running on an NFS root over Wifi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/skeleton.css">
+    <link rel="stylesheet" href="/css/highlighting.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+</head>
+<header class="no-padding">
+  <div class="navbar-fixed">
+    <nav class="navfeature grey darken-4">
+      <div class="container nav-wrapper header-width">
+        <a href="/" class="brand-logo center">Coding Verbiage</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<body>
+  <div class="content-start">
+    <main>
+<h3>Raspberry Pi: Running on an NFS root over Wifi</h3>
+<p>It seems a lot of people work directly or compile software directly on their Raspberry Pi.  I prefer to cross-compile on my desktop because it&rsquo;s way faster.  However, this also requires setting up a network share; transferring the SD card between the desktop and the RPI will get annoying very quickly.  While we&rsquo;re at it, we&rsquo;d might as well use an NFS root so we can make sure the init process only starts what we need.</p>
+<p>Gentoo&rsquo;s crossdev tool allows you to create your own distribution that contains only what we need.  We will be running that over an NFS root.  This should work fine for most purposes, but I was getting annoyed with being restricted to where I can plug in an ethernet cable.</p>
+<p>This post will show you how to set up a base system for your RPI and how to boot into it as an NFS root using a Wifi connection.  This will require a Gentoo system.  You can find the reference scripts <a href="https://github.com/ChrisTrenkamp/rpi-nfs-root-over-wifi">here</a>.</p>
+<p>First install crossdev&hellip;</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ emerge crossdev
+</code></pre></div><p>&hellip; then create the base system by creating a cross-compile toolchain.  Check the <a href="https://wiki.gentoo.org/wiki/Raspberry_Pi#Crossdev">here</a> to see which toolchain to create.  Through this post, we&rsquo;ll be using <code>armv6j-hardfloat-linux-gnueabi</code> because I have RPI v1 B+.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ crossdev -S -t armv6j-hardfloat-linux-gnueabi
+</code></pre></div><p>When the toolchain is done compiling, we&rsquo;ll need to install some basic utilities.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat &gt;&gt; /usr/armv6j-hardfloat-linux-gnueabi/etc/portage/package.use <span style="color:#e6db74">&lt;&lt; EOF
+</span><span style="color:#e6db74">net-wireless/wpa_supplicant ssl
+</span><span style="color:#e6db74">net-misc/dhcpcd -udev
+</span><span style="color:#e6db74">EOF</span>
+
+$ armv6j-hardfloat-linux-gnueabi-emerge -av busybox iw linux-firmware wpa_supplicant dhcpcd
+</code></pre></div><p>We need <code>busybox</code> for general usage, <code>iw</code> and <code>wpa_supplicant</code> for connecting to the Wifi network, <code>linux-firmware</code> because your Wifi adapter will undoubtly require some firmware to run, and <code>dhcpcd</code> because the default DHCP client supplied by <code>busybox</code> didn&rsquo;t work with the Wifi adapter.  If you know you don&rsquo;t need any firmware or know which firmware you need, <code>linux-firmware</code> and be removed or replaced with your adapter&rsquo;s specific ebuild.</p>
+<p>Now we need to build the kernel and firmware.  Pull the Raspberry Pi fork and build it with the cross compiler.  Check <a href="https://wiki.gentoo.org/wiki/Raspberry_Pi#Manual_compilation">the wiki</a> to find out which default configuration to use.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ git clone https://github.com/raspberrypi/linux rpi
+$ git clone --depth <span style="color:#ae81ff">1</span> https://github.com/raspberrypi/firmware -b 1.20180817
+
+$ cd rpi
+$ git checkout rpi-4.9.y
+
+$ export <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>	ARCH<span style="color:#f92672">=</span>arm <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>	CROSS_COMPILE<span style="color:#f92672">=</span>armv6j-hardfloat-linux-gnueabi- <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>	INSTALL_PATH<span style="color:#f92672">=</span>/usr/armv6j-hardfloat-linux-gnueabi/boot <span style="color:#ae81ff">\
+</span><span style="color:#ae81ff"></span>	INSTALL_MOD_PATH<span style="color:#f92672">=</span>/usr/armv6j-hardfloat-linux-gnueabi/
+
+$ make bcmrpi_defconfig
+$ make -j3
+$ make modules_install
+$ cp arch/arm/boot/Image /usr/armv6j-hardfloat-linux-gnueabi/boot/rpi-kernel
+</code></pre></div><p>We need to configure the Raspberry Pi&rsquo;s bootloader so it will load the initramfs on boot.  So create these <a href="https://github.com/ChrisTrenkamp/rpi-nfs-root-over-wifi/tree/master/boot">boot configuration files</a>.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat config.txt
+kernel<span style="color:#f92672">=</span>rpi-kernel
+initramfs init.cpio.gz followkernel
+
+$ cat cmdline.txt
+root<span style="color:#f92672">=</span>/dev/ram0
+</code></pre></div><p>Now we have to create the initramfs.  First, we&rsquo;ll need to create the wpa_supplicant configuration for connecting to the Wifi network.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash"><span style="color:#75715e"># Strip out the plain-text password</span>
+$ wpa_passphrase <span style="color:#e6db74">&#34;wifissid&#34;</span> <span style="color:#e6db74">&#34;wifipass&#34;</span> | grep -v <span style="color:#e6db74">&#39;#&#39;</span> &gt; ramfs/wpa_supplicant.conf
+</code></pre></div><p>Set up the base directories.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ mkdir -p /tmp/initramfs/
+$ mkdir -p /tmp/initramfs/<span style="color:#f92672">{</span>bin,etc,dev,lib,proc,sbin,sys,usr/lib,new_root<span style="color:#f92672">}</span>
+</code></pre></div><p>Copy the wpa_supplicant config and <a href="https://github.com/ChrisTrenkamp/rpi-nfs-root-over-wifi/blob/master/ramfs/init">init file</a>.  Replace 192.168.1.2 with the IP address of the machine hosting the NFS share.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cp ramfs/wpa_supplicant.conf /tmp/initramfs/etc
+$ cp ramfs/init /tmp/initramfs/
+$ chmod +x /tmp/initramfs/init
+</code></pre></div><p>Copy the required initramfs binaries.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cp /usr/armv6j-hardfloat-linux-gnueabi/<span style="color:#f92672">{</span>bin/busybox,usr/sbin/<span style="color:#f92672">{</span>iw,wpa_supplicant<span style="color:#f92672">}</span>,sbin/dhcpcd<span style="color:#f92672">}</span> /tmp/initramfs/bin/
+$ ln -s busybox /tmp/initramfs/bin/sh
+</code></pre></div><p>Copy the required shared libraries.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cp /usr/armv6j-hardfloat-linux-gnueabi/lib/<span style="color:#f92672">{</span>libresolv*,libnss_<span style="color:#f92672">{</span>dns,files<span style="color:#f92672">}</span>*,ld-*,libc-*,libc.so*,libpthread*,librt*,libdl*,libz.so*<span style="color:#f92672">}</span> /tmp/initramfs/lib
+$ cp /usr/armv6j-hardfloat-linux-gnueabi/usr/lib/<span style="color:#f92672">{</span>libnl-*,libtommath*,libssl*,libcrypto.so*<span style="color:#f92672">}</span> /tmp/initramfs/usr/lib/
+</code></pre></div><p>Gather a list of required kernel modules using <a href="https://github.com/ChrisTrenkamp/rpi-nfs-root-over-wifi/blob/master/modules.sh">this script</a>.  Replace <code>rtl8192cu</code> with the adapter you use.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ mods<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#66d9ef">$(</span>./modules.sh rtl8192cu ipv6 ccm ctr<span style="color:#66d9ef">)</span><span style="color:#e6db74">&#34;</span>
+$ cd /usr/armv6j-hardfloat-linux-gnueabi/
+$ <span style="color:#66d9ef">for</span> i in $mods; <span style="color:#66d9ef">do</span>
+	find lib/modules/4.9.80+/ -type f -name <span style="color:#e6db74">&#34;</span><span style="color:#e6db74">${</span>i<span style="color:#e6db74">}</span><span style="color:#e6db74">.ko&#34;</span> -exec cp --parents <span style="color:#ae81ff">\{\}</span> /tmp/initramfs/ <span style="color:#ae81ff">\;</span>
+<span style="color:#66d9ef">done</span>
+</code></pre></div><p>Create the script for modprobing the modules in the init script.  We need them loaded so we can use our Wifi adapter.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ echo <span style="color:#e6db74">&#34;</span>$mods<span style="color:#e6db74">&#34;</span> | sed <span style="color:#e6db74">&#39;s/^/modprobe /&#39;</span> | sed <span style="color:#e6db74">&#39;1i#!/bin/sh&#39;</span> &gt; /tmp/initramfs/etc/modules.sh
+$ chmod +x /tmp/initramfs/etc/modules.sh
+</code></pre></div><p>Pull in the required firmware.  Replace 8192cu with the firmware your adapter uses.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ find lib/firmware -type f -name <span style="color:#e6db74">&#34;*8192cu*&#34;</span> -exec cp --parents <span style="color:#ae81ff">\{\}</span> /tmp/initramfs/ <span style="color:#ae81ff">\;</span>
+</code></pre></div><p>Pull in the <code>dhcpcd</code> configuration files.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ find usr/share/dhcpcd/ lib/dhcpcd/ -type f -exec cp --parents <span style="color:#ae81ff">\{\}</span> /tmp/initramfs/ <span style="color:#ae81ff">\;</span>
+$ cp etc/dhcpcd.conf /tmp/initramfs/etc
+$ mkdir /tmp/initramfs/var/lib/dhcpcd -p
+</code></pre></div><p>And finally pull it all into a CPIO archive.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cd /tmp/initramfs
+$ find . -print0 | cpio --null -ov --format<span style="color:#f92672">=</span>newc | gzip -9 &gt; /usr/armv6j-hardfloat-linux-gnueabi/boot/init.cpio.gz
+</code></pre></div><p>The root filesystem is missing some directories and an init system, so copy <a href="https://github.com/ChrisTrenkamp/rpi-nfs-root-over-wifi/tree/master/root_files">these files</a> to the NFS root.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ln -s /proc/mounts /usr/armv6j-hardfloat-linux-gnueabi/etc/mtab
+$ cp -r root_files/* /usr/armv6j-hardfloat-linux-gnueabi/
+</code></pre></div><p>Finally, we need to make sure the embedded system is being shared.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cat /etc/exports
+/usr/armv6j-hardfloat-linux-gnueabi/ *<span style="color:#f92672">(</span>ro,sync,fsid<span style="color:#f92672">=</span>0<span style="color:#f92672">)</span>
+$
+</code></pre></div><p>Now the base system and initramfs is set up.  The last step is to copy the files over to the SD card.  <a href="https://wiki.gentoo.org/wiki/Raspberry_Pi#Partitioning">Partition the SD card</a> and copy the files over.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">mkfs.vfat /dev/sdc1
+mount /dev/sdc1 /mnt
+cp -r kernel/firmware/boot/* boot/* /usr/armv6j-hardfloat-linux-gnueabi/boot/<span style="color:#f92672">{</span>rpi-kernel,init.cpio.gz<span style="color:#f92672">}</span> /mnt
+umount /dev/sdc1
+</code></pre></div><p>If all goes well, your PI should set up its Wifi on boot, mount the NFS share, and <code>switch_root</code> into it.  Now you can tweak the <code>rc</code> file to start the services you need.</p>
+<img src="/rpi-nfs-root-over-wifi/boot.jpg" style="width: 100%"/>
+
+</main>
+</div>
+</body>
+
+</html>

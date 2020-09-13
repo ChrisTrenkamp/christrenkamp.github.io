@@ -1,0 +1,10 @@
+<ul class="toc">
+    <li>
+        <a href="/">Home</a>
+    </li>
+    {{ range where .Site.Pages "Kind" "section" }}
+        <li>
+            <a href="{{ .Permalink }}">{{ .Title }}</a>
+        </li>
+    {{ end }}
+</ul>
