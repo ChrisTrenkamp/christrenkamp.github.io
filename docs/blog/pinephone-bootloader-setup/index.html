@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>PinePhone p-boot Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/css/skeleton.css">
+    <link rel="stylesheet" href="/css/highlighting.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/css/materialize.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0-beta/js/materialize.min.js"></script>
+</head>
+<header class="no-padding">
+  <div class="navbar-fixed">
+    <nav class="navfeature grey darken-4">
+      <div class="container nav-wrapper header-width">
+        <a href="/" class="brand-logo center">Coding Verbiage</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<body>
+  <div class="content-start">
+    <main>
+<h3>PinePhone p-boot Setup</h3>
+<p>Here&rsquo;s a general walkthrough for setting up a bootloader on the PinePhone.  We&rsquo;re going to use p-boot, which has nice start-times and lets you customize your boot screen with fancy graphics.  SD-card is not supplied with this tutorial, you need to provide your own.</p>
+<p>These instructions are for Linux, but should be distribution-agnostic.  At the end, I will be using a Gentoo-specific tool, but it doesn&rsquo;t involve installing p-boot.</p>
+<p>First, we need to grab some cross-compilers.  We will need ARM64 and OpenRisk.  Grab the toolchains and add the compiler&rsquo;s to your PATH:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ wget https://toolchains.bootlin.com/downloads/releases/toolchains/aarch64/tarballs/aarch64--musl--bleeding-edge-2020.02-2.tar.bz2
+$ wget https://toolchains.bootlin.com/downloads/releases/toolchains/openrisc/tarballs/openrisc--musl--bleeding-edge-2020.02-2.tar.bz2
+$ tar xpf aarch64--musl--bleeding-edge-2020.02-2.tar.bz2
+$ tar xpf openrisc--musl--bleeding-edge-2020.02-2.tar.bz2
+$ export PATH<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#66d9ef">$(</span>pwd<span style="color:#66d9ef">)</span><span style="color:#e6db74">/aarch64--musl--bleeding-edge-2020.02-2/bin:</span>$PATH<span style="color:#e6db74">&#34;</span>
+$ export PATH<span style="color:#f92672">=</span><span style="color:#e6db74">&#34;</span><span style="color:#66d9ef">$(</span>pwd<span style="color:#66d9ef">)</span><span style="color:#e6db74">/openrisc--musl--bleeding-edge-2020.02-2/bin:</span>$PATH<span style="color:#e6db74">&#34;</span>
+</code></pre></div><p>Now let&rsquo;s retrieve p-boot:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ git clone https://megous.com/git/p-boot/
+</code></pre></div><p>First, we need to build the ARM firmware for bootstrapping the system.  Clone these repositories:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cd p-boot/fw
+$ git clone https://github.com/ARM-software/arm-trusted-firmware.git atf
+$ git clone https://github.com/crust-firmware/crust.git crust
+</code></pre></div><p>The firmware needs some patches:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cd atf <span style="color:#f92672">&amp;&amp;</span> git am ../atf.patch <span style="color:#f92672">&amp;&amp;</span> cd ..
+</code></pre></div><p>Now we need to edit a couple files to use the bootlin cross compilers:</p>
+<ul>
+<li>Edit <code>build-atf.sh</code>, set <code>CROSS_COMPILE</code> to <code>aarch64-buildroot-linux-musl-</code></li>
+<li>Edit <code>crust/arch/or1k/Makefile</code>, set <code>CROSS_COMPILE</code> to <code>or1k-buildroot-linux-musl-</code></li>
+<li>Edit <code>crust/Makefile</code>, set HOST_COMPILE to <code>aarch64-buildroot-linux-musl-</code></li>
+</ul>
+<p>Now build the firmware:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ./build-all.sh
+</code></pre></div><p>If all goes well, you should now have a <code>fw.bin</code> file.  Now go into the build directory:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ cd ../build
+</code></pre></div><p>Edit <code>build.ninja</code>, set <code>aarch64_prefix</code> to <code>aarch64-buildroot-linux-musl-</code> and build:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ninja
+</code></pre></div><p>You should now have the utilities for installing p-boot on your SD-card.  Before we do that, let&rsquo;s grab a pre-built Linux image to test it.  We&rsquo;ll use an image from the same maintainer as p-boot:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ wget https://xff.cz/kernels/5.9/pp.tar.gz
+$ tar xpf pp.tar.gz
+$ ls pp-5.9/
+board-1.0.dtb  board-1.1.dtb  board-1.2.dtb  headers  Image  linux.config  modules
+</code></pre></div><p>As an optional step, you can also create your own splashscreen image.  You need <code>imagemagick</code> to do this.  Compile the <code>argb.c</code> program in the <code>theme</code> directory and run the following commands to convert your image into a format consumable for p-boot:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">gcc -o argb argb.c
+convert your-image.png your-image.rgba
+./argb your-image.rgba pboot2.rgba
+</code></pre></div><p>You will also need a <code>off.rgba</code> file for this.  You can find it in the <code>theme</code> directory or a prebuilt one in <code>example/files/</code>.  Also note that <code>pboot2.rgba</code> is the default image that is displayed when p-boot is loaded.</p>
+<p>Now let&rsquo;s make the bootloader configuration:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ mkdir config
+$ cat &gt; config/boot.conf <span style="color:#e6db74">&lt;&lt;EOF
+</span><span style="color:#e6db74">no=0
+</span><span style="color:#e6db74">  name=Test Linux
+</span><span style="color:#e6db74">  atf=fw.bin
+</span><span style="color:#e6db74">  dtb=board-1.2.dtb
+</span><span style="color:#e6db74">  linux=Image
+</span><span style="color:#e6db74">  bootargs=console=ttyS0,115200 console=tty1 root=/dev/mmcblk0p3 rootfstype=ext4 ro rootwait panic=30 init=/hello
+</span><span style="color:#e6db74">  splash=files/pboot2.argb
+</span><span style="color:#e6db74">EOF</span>
+</code></pre></div><p>The <code>root</code> paramter is pointing to the third partition of the SD-card.  Also notice the <code>init</code> parameter is set to <code>/hello</code>.  More on that at the end&hellip;</p>
+<p>Copy over the <code>fw.bin</code> firmware file.  Also copy the kernel image, <code>Image</code>, and the device tree blob for your Phone (<code>board-1.2.dtb</code> in my case).</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ls config
+boot.conf  files  fw.bin  Image  board-1.2.dtb
+</code></pre></div><p>Also make a <code>files</code> directory and copy your splash images over:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ ls config/files
+off.argb  pboot2.argb
+</code></pre></div><p>Now lets create a partition table on your SD-card.  It must be a DOS filesystem table.  Create a dedicated partition for p-boot, set it to Linux and set the bootable flag for it.  For example:</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ fdisk -l /dev/sdc
+Disk /dev/sdc: 29.81 GiB, <span style="color:#ae81ff">32010928128</span> bytes, <span style="color:#ae81ff">62521344</span> sectors
+Disk model: SD  Transcend   
+Units: sectors of <span style="color:#ae81ff">1</span> * 512 <span style="color:#f92672">=</span> <span style="color:#ae81ff">512</span> bytes
+Sector size <span style="color:#f92672">(</span>logical/physical<span style="color:#f92672">)</span>: <span style="color:#ae81ff">512</span> bytes / <span style="color:#ae81ff">512</span> bytes
+I/O size <span style="color:#f92672">(</span>minimum/optimal<span style="color:#f92672">)</span>: <span style="color:#ae81ff">512</span> bytes / <span style="color:#ae81ff">512</span> bytes
+Disklabel type: dos
+Disk identifier: 0x317e999c
+
+Device     Boot   Start      End  Sectors  Size Id Type
+/dev/sdc1  *       <span style="color:#ae81ff">2048</span>   <span style="color:#ae81ff">206847</span>   <span style="color:#ae81ff">204800</span>  100M <span style="color:#ae81ff">83</span> Linux
+/dev/sdc2        <span style="color:#ae81ff">206848</span>  <span style="color:#ae81ff">4401151</span>  <span style="color:#ae81ff">4194304</span>    2G <span style="color:#ae81ff">82</span> Linux swap / Solaris
+/dev/sdc3       <span style="color:#ae81ff">4401152</span> <span style="color:#ae81ff">62521343</span> <span style="color:#ae81ff">58120192</span> 27.7G <span style="color:#ae81ff">83</span> Linux
+</code></pre></div><p><code>sdc1</code> is the p-boot partition, <code>sdc2</code> is the swap partition, and <code>sdc3</code> is the root.</p>
+<p>Finally, write the bootloader images to your SD-card.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ dd <span style="color:#66d9ef">if</span><span style="color:#f92672">=</span>p-boot.bin of<span style="color:#f92672">=</span>/dev/sdX bs<span style="color:#f92672">=</span><span style="color:#ae81ff">1024</span> seek<span style="color:#f92672">=</span><span style="color:#ae81ff">8</span>
+$ ./p-boot-conf-native config/ /dev/sdX# <span style="color:#75715e"># This is going to the boot partition (sdc1 in my case)</span>
+</code></pre></div><p>Now we&rsquo;re done with the booatloader.  For good measure, let&rsquo;s test PID1 (remember the <code>init=/hello</code> parameter?).  I set up a compiler with Gentoo&rsquo;s crossdev tool and copied it out to the SD-card.</p>
+<div class="highlight"><pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4"><code class="language-bash" data-lang="bash">$ crossdev -t aarch64-linux-musl
+<span style="color:#75715e"># Wait a million years</span>
+$ cat &gt; hello.c <span style="color:#e6db74">&lt;&lt;EOF
+</span><span style="color:#e6db74">#include &lt;stdio.h&gt;
+</span><span style="color:#e6db74">int main() {printf(&#34;Hello world\n&#34;);}
+</span><span style="color:#e6db74">EOF</span>
+$ aarch646-linux-musl-gcc -static hello.c
+$ mkfs.ext4 /dev/sdc3
+$ mount /dev/sdc3 /mnt
+$ cp a.out /mnt/hello
+$ umount /mnt
+</code></pre></div><p>Now the moment of truth.  Stick your SD-card in and see if it works.  Here&rsquo;s some pictures capturing the magical p-boot and kernel initialization process on my phone:</p>
+<img src="/pinephone-bootloader-setup/p-boot.jpg" style="width: 100%"/>
+<img src="/pinephone-bootloader-setup/kernel-init.jpg" style="width: 100%"/>
+
+</main>
+</div>
+</body>
+
+</html>

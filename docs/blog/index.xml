@@ -6,10 +6,21 @@
     <description>Recent content in Blogs on Coding Verbiage</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Sat, 22 Sep 2018 18:30:23 -0400</lastBuildDate>
+    <lastBuildDate>Sun, 13 Sep 2020 17:22:43 -0400</lastBuildDate>
     
 	<atom:link href="https://christrenkamp.github.io/blog/index.xml" rel="self" type="application/rss+xml" />
     
+    
+    <item>
+      <title>PinePhone p-boot Setup</title>
+      <link>https://christrenkamp.github.io/blog/pinephone-bootloader-setup/</link>
+      <pubDate>Sun, 13 Sep 2020 17:22:43 -0400</pubDate>
+      
+      <guid>https://christrenkamp.github.io/blog/pinephone-bootloader-setup/</guid>
+      <description>Here&amp;rsquo;s a general walkthrough for setting up a bootloader on the PinePhone. We&amp;rsquo;re going to use p-boot, which has nice start-times and lets you customize your boot screen with fancy graphics. SD-card is not supplied with this tutorial, you need to provide your own.
+These instructions are for Linux, but should be distribution-agnostic. At the end, I will be using a Gentoo-specific tool, but it doesn&amp;rsquo;t involve installing p-boot.
+First, we need to grab some cross-compilers.</description>
+    </item>
     
     <item>
       <title>Raspberry Pi: Running on an NFS root over Wifi</title>
